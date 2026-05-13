@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Shepherd's Quill | Preaching Note-Taking App</title>
+    <!-- html2pdf library (easy PDF generation) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+        body {
+            font-family: system-ui, 'Segoe UI', 'Inter', 'Roboto', sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+        }
+        /* App layout */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        /* top bar */
+        .top-bar {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .logo-area h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #2c3e66, #4f7a9e);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button, .btn-secondary {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.15s;
+        }
+        button.primary {
+            background: #2c3e66;
+            border-color: #2c3e66;
+            color: white;
+        }
+        button.primary:hover {
+            background: #1e2a4a;
+        }
+        button.danger {
+            background: #fff1f0;
+            border-color: #fecaca;
+            color: #b91c1c;
+        }
+        button.danger:hover {
+            background: #fee2e2;
+        }
+        button:hover {
+            background: #e2e8f0;
+            transform: translateY(-1px);
+        }
+        /* main 2 columns */
+        .main-panel {
+            display: flex;
+            flex: 1;
+            flex-wrap: wrap;
+        }
+        /* sidebar (note library) */
+        .sidebar {
+            width: 300px;
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            height: calc(100vh - 70px);
+            overflow-y: auto;
+        }
+        .search-section input, .tag-filter input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 28px;
+            font-size: 0.85rem;
+        }
+        .note-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .note-item {
+            background: #f8fafc;
+            padding: 10px 12px;
+            border-radius: 14px;
+            border-left: 4px solid #4f7a9e;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .note-item:hover {
+            background: #eef2ff;
+        }
+        .note-item .note-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .note-item .note-date {
+            font-size: 0.7rem;
+            color: #475569;
+        }
+        .tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .tag {
+            background: #e2e8f0;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+        /* editor area */
+        .editor-area {
+            flex: 1;
+            padding: 1.5rem 2rem;
+            overflow-y: auto;
+            max-height: calc(100vh - 70px);
+        }
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+        label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: block;
+            margin-bottom: 6px;
+            color: #1e293b;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 16px;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        .rich-toolbar {
+            background: #f1f5f9;
+            padding: 6px 10px;
+            border-radius: 32px;
+            margin-bottom: 6px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .rich-toolbar span {
+            cursor: pointer;
+            background: white;
+            padding: 4px 12px;
+            border-radius: 32px;
+            font-size: 0.8rem;
+            border: 1px solid #cbd5e1;
+        }
+        .rich-editor {
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 16px;
+            padding: 12px;
+            min-height: 130px;
+            outline: none;
+        }
+        .inline-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .inline-row > div {
+            flex: 1;
+        }
+        hr {
+            margin: 1rem 0;
+        }
+        @media (max-width: 780px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .editor-area {
+                padding: 1rem;
+            }
+            .main-panel {
+                flex-direction: column;
+            }
+        }
+        .pdf-export-options {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="top-bar">
+        <div class="logo-area"><h1>✝️ Shepherd's Quill</h1></div>
+        <div class="action-buttons">
+            <button id="newNoteBtn" class="primary">➕ New Note</button>
+            <button id="saveNoteBtn">💾 Save Note</button>
+            <button id="duplicateNoteBtn">📋 Duplicate</button>
+            <button id="deleteNoteBtn" class="danger">🗑️ Delete</button>
+            <button id="exportCurrPdfBtn">📄 Export Current PDF</button>
+            <button id="exportAllPdfBtn">📚 Export All PDF</button>
+            <button id="importDataBtn" style="background:#e9f5e9;">📂 Import JSON</button>
+            <button id="exportDataBtn">⬇️ Backup Data</button>
+        </div>
+    </div>
+    <div class="main-panel">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="search-section">
+                <input type="text" id="searchInput" placeholder="🔍 Search by title, passage, tag...">
+            </div>
+            <div class="tag-filter">
+                <input type="text" id="tagFilterInput" placeholder="🏷️ Filter by tag (click tag to use)">
+                <div id="globalTagsList" class="tag-cloud"></div>
+            </div>
+            <div><strong>📖 Notes library</strong> <span id="noteCount"></span></div>
+            <div id="noteListContainer" class="note-list"></div>
+            <div style="font-size:12px; color:#64748b; margin-top:8px;">💡 Series & tagging ready</div>
+        </div>
+
+        <!-- Editor area -->
+        <div class="editor-area" id="editorArea">
+            <div class="form-group inline-row">
+                <div><label>Sermon Title *</label><input type="text" id="noteTitle" placeholder="e.g., The Good Shepherd"></div>
+                <div><label>Date</label><input type="date" id="noteDate"></div>
+                <div><label>Service Type</label><select id="serviceType"><option>Sunday Morning</option><option>Sunday Evening</option><option>Midweek</option><option>Youth</option><option>Other</option></select></div>
+            </div>
+            <div class="form-group inline-row">
+                <div><label>Speaker</label><input type="text" id="speaker" placeholder="Pastor name"></div>
+                <div><label>Series</label><input type="text" id="seriesName" placeholder="e.g., Gospel of John"></div>
+            </div>
+            <div class="form-group"><label>📖 Main Bible Passage</label><input type="text" id="mainPassage" placeholder="John 10:11-18"></div>
+            <div class="form-group"><label>➕ Additional Verses</label><textarea id="additionalVerses" rows="2" placeholder="Psalm 23, Ezekiel 34..."></textarea></div>
+            
+            <!-- Rich Text: Key Takeaways -->
+            <div class="form-group"><label>✨ Key Takeaways</label>
+                <div class="rich-toolbar" data-target="takeaways"><span data-cmd="bold">B</span><span data-cmd="italic">I</span><span data-cmd="insertUnordered">• Bullet</span><span data-cmd="insertOrdered">1. Num</span><span data-cmd="highlight">💛 Highlight</span></div>
+                <div id="takeaways" class="rich-editor" contenteditable="true"></div>
+            </div>
+            <!-- Application numbered/list rich -->
+            <div class="form-group"><label>🛠️ Application / Action Steps</label>
+                <div class="rich-toolbar" data-target="application"><span data-cmd="bold">B</span><span data-cmd="italic">I</span><span data-cmd="insertUnordered">• Bullet</span><span data-cmd="insertOrdered">1. Num</span><span data-cmd="highlight">💛 Highlight</span></div>
+                <div id="application" class="rich-editor" contenteditable="true"></div>
+            </div>
+            <div class="form-group"><label>🙏 Prayer Points</label>
+                <div class="rich-toolbar" data-target="prayer"><span data-cmd="bold">B</span><span data-cmd="italic">I</span><span data-cmd="insertUnordered">• Bullet</span><span data-cmd="insertOrdered">1. Num</span><span data-cmd="highlight">💛 Highlight</span></div>
+                <div id="prayer" class="rich-editor" contenteditable="true"></div>
+            </div>
+            <div class="form-group"><label>🏷️ Tags (comma separated)</label><input type="text" id="tagsInput" placeholder="Grace, Jesus, Prayer"></div>
+            <div class="pdf-export-options"><small>✅ PDF includes title, date, speaker, series, passages, takeaways, application, prayer points (preserves lists & highlights)</small></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---------- DATA MODEL ----------
+    let notes = [];
+    let currentNoteId = null;
+    let nextId = 1;
+
+    // Helper: load from localStorage
+    function loadData() {
+        const stored = localStorage.getItem("preaching_notes_app");
+        if (stored) {
+            notes = JSON.parse(stored);
+            if(notes.length) nextId = Math.max(...notes.map(n=>n.id),0)+1;
+            else nextId = 1;
+        } else {
+            // Demo notes (extended prompt examples)
+            notes = [
+                {
+                    id: 1, title: "The Good Shepherd", date: new Date().toISOString().slice(0,10), serviceType: "Sunday Morning",
+                    speaker: "Pastor John", series: "Gospel of John", mainPassage: "John 10:11-18",
+                    additionalVerses: "Psalm 23", takeaways: "<ul><li>Jesus knows His sheep.</li><li>He lays down His life willingly.</li></ul>",
+                    application: "<ol><li>Trust the Shepherd daily</li><li>Listen to His voice</li></ol>",
+                    prayer: "<ul><li>Thank Him for His sacrifice</li><li>Pray for discernment</li></ul>",
+                    tags: ["Jesus","Shepherd","Trust"]
+                },
+                {
+                    id: 2, title: "Walk by the Spirit", date: new Date().toISOString().slice(0,10), serviceType: "Sunday Evening",
+                    speaker: "Pastor Sarah", series: "Galatians Life", mainPassage: "Galatians 5:16-25",
+                    additionalVerses: "Romans 8:5-6", takeaways: "<ul><li>Flesh vs Spirit conflict</li><li>Fruit of the Spirit is freedom</li></ul>",
+                    application: "<ol><li>Daily surrender</li><li>Practice gentleness</li></ol>",
+                    prayer: "<ul><li>Holy Spirit fill us</li></ul>",
+                    tags: ["Spirit","Freedom","Fruit"]
+                }
+            ];
+            nextId = 3;
+        }
+        renderNoteList();
+        if(notes.length>0 && !currentNoteId) loadNoteIntoEditor(notes[0].id);
+        else if(notes.length===0) clearEditorForm();
+    }
+
+    function saveToLocal() {
+        localStorage.setItem("preaching_notes_app", JSON.stringify(notes));
+        renderNoteList();
+        updateGlobalTags();
+    }
+
+    function getCurrentNoteFromEditor() {
+        return {
+            id: currentNoteId,
+            title: document.getElementById("noteTitle").value.trim() || "Untitled Sermon",
+            date: document.getElementById("noteDate").value,
+            serviceType: document.getElementById("serviceType").value,
+            speaker: document.getElementById("speaker").value,
+            series: document.getElementById("seriesName").value,
+            mainPassage: document.getElementById("mainPassage").value,
+            additionalVerses: document.getElementById("additionalVerses").value,
+            takeaways: document.getElementById("takeaways").innerHTML,
+            application: document.getElementById("application").innerHTML,
+            prayer: document.getElementById("prayer").innerHTML,
+            tags: document.getElementById("tagsInput").value.split(",").map(s=>s.trim()).filter(s=>s)
+        };
+    }
+
+    function saveCurrentNote() {
+        if(!currentNoteId) {
+            // create new
+            const newNote = getCurrentNoteFromEditor();
+            newNote.id = nextId++;
+            notes.push(newNote);
+            currentNoteId = newNote.id;
+        } else {
+            const idx = notes.findIndex(n=>n.id===currentNoteId);
+            if(idx!==-1) {
+                notes[idx] = {...getCurrentNoteFromEditor(), id: currentNoteId};
+            }
+        }
+        saveToLocal();
+        loadNoteIntoEditor(currentNoteId);
+        alert("Note saved ✓");
+    }
+
+    function loadNoteIntoEditor(id) {
+        const note = notes.find(n=>n.id===id);
+        if(!note) return;
+        currentNoteId = note.id;
+        document.getElementById("noteTitle").value = note.title;
+        document.getElementById("noteDate").value = note.date || new Date().toISOString().slice(0,10);
+        document.getElementById("serviceType").value = note.serviceType || "Sunday Morning";
+        document.getElementById("speaker").value = note.speaker || "";
+        document.getElementById("seriesName").value = note.series || "";
+        document.getElementById("mainPassage").value = note.mainPassage || "";
+        document.getElementById("additionalVerses").value = note.additionalVerses || "";
+        document.getElementById("takeaways").innerHTML = note.takeaways || "";
+        document.getElementById("application").innerHTML = note.application || "";
+        document.getElementById("prayer").innerHTML = note.prayer || "";
+        document.getElementById("tagsInput").value = (note.tags || []).join(", ");
+    }
+
+    function clearEditorForm() {
+        currentNoteId = null;
+        document.getElementById("noteTitle").value = "";
+        document.getElementById("noteDate").value = new Date().toISOString().slice(0,10);
+        document.getElementById("serviceType").value = "Sunday Morning";
+        document.getElementById("speaker").value = "";
+        document.getElementById("seriesName").value = "";
+        document.getElementById("mainPassage").value = "";
+        document.getElementById("additionalVerses").value = "";
+        document.getElementById("takeaways").innerHTML = "";
+        document.getElementById("application").innerHTML = "";
+        document.getElementById("prayer").innerHTML = "";
+        document.getElementById("tagsInput").value = "";
+    }
+
+    function newNote() {
+        clearEditorForm();
+        currentNoteId = null;
+    }
+
+    function deleteCurrent() {
+        if(!currentNoteId) return;
+        if(confirm("Delete this note?")) {
+            notes = notes.filter(n=>n.id !== currentNoteId);
+            if(notes.length===0) {
+                clearEditorForm();
+                currentNoteId=null;
+            } else {
+                loadNoteIntoEditor(notes[0].id);
+            }
+            saveToLocal();
+        }
+    }
+
+    function duplicateNote() {
+        if(!currentNoteId) return;
+        const original = notes.find(n=>n.id===currentNoteId);
+        if(original) {
+            const copy = {...original, id: nextId++, title: original.title + " (Copy)"};
+            notes.push(copy);
+            saveToLocal();
+            loadNoteIntoEditor(copy.id);
+        }
+    }
+
+    function renderNoteList() {
+        const container = document.getElementById("noteListContainer");
+        const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+        const tagFilter = document.getElementById("tagFilterInput").value.trim().toLowerCase();
+        let filtered = [...notes];
+        if(searchTerm) {
+            filtered = filtered.filter(n=> n.title.toLowerCase().includes(searchTerm) || n.mainPassage?.toLowerCase().includes(searchTerm) || (n.tags||[]).some(t=>t.toLowerCase().includes(searchTerm)));
+        }
+        if(tagFilter) {
+            filtered = filtered.filter(n=> (n.tags||[]).some(t=>t.toLowerCase()===tagFilter));
+        }
+        document.getElementById("noteCount").innerText = `(${filtered.length})`;
+        if(filtered.length===0) { container.innerHTML="<div style='padding:10px;'>📭 No notes</div>"; return; }
+        container.innerHTML = filtered.map(n=> `<div class="note-item" data-id="${n.id}"><div class="note-title">${escapeHtml(n.title)}</div><div class="note-date">${n.date || "no date"} | ${n.series ? n.series : "no series"}</div><div class="tag-cloud">${(n.tags||[]).slice(0,2).map(t=>`<span class="tag" data-tag="${t}">${escapeHtml(t)}</span>`).join('')}</div></div>`).join('');
+        document.querySelectorAll('.note-item').forEach(el=> {
+            el.addEventListener('click',(e)=>{
+                if(e.target.classList.contains('tag')) {
+                    const tagval = e.target.getAttribute('data-tag');
+                    document.getElementById("tagFilterInput").value = tagval;
+                    renderNoteList();
+                } else {
+                    const id = parseInt(el.dataset.id);
+                    loadNoteIntoEditor(id);
+                }
+            });
+        });
+    }
+
+    function updateGlobalTags() {
+        const allTags = new Set();
+        notes.forEach(n=> (n.tags||[]).forEach(t=> allTags.add(t)));
+        const container = document.getElementById("globalTagsList");
+        if(allTags.size===0) { container.innerHTML="<span>No tags yet</span>"; return; }
+        container.innerHTML = Array.from(allTags).map(t=> `<span class="tag" data-globaltag="${t}">🏷️ ${escapeHtml(t)}</span>`).join('');
+        document.querySelectorAll('[data-globaltag]').forEach(el=>{
+            el.addEventListener('click',()=>{
+                document.getElementById("tagFilterInput").value = el.innerText.replace("🏷️ ","");
+                renderNoteList();
+            });
+        });
+    }
+
+    function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+
+    // PDF export helper for a note (html2pdf)
+    async function generateNotePDF(note, includeHeader=true) {
+        const pdfContainer = document.createElement('div');
+        pdfContainer.style.padding = '20px';
+        pdfContainer.style.fontFamily = 'system-ui, sans-serif';
+        pdfContainer.style.maxWidth = '800px';
+        pdfContainer.style.background = 'white';
+        pdfContainer.innerHTML = `
+            <h1 style="color:#1e3a5f;">${escapeHtml(note.title)}</h1>
+            <p><strong>Date:</strong> ${note.date || '—'} &nbsp;| <strong>Service:</strong> ${note.serviceType || '—'} &nbsp;| <strong>Speaker:</strong> ${note.speaker || '—'}</p>
+            <p><strong>Series:</strong> ${note.series || '—'}</p>
+            <div style="background:#f1f5f9; padding:10px; border-radius:12px;"><strong>📖 Main Passage:</strong> ${escapeHtml(note.mainPassage || '—')}<br><strong>Additional:</strong> ${escapeHtml(note.additionalVerses || '—')}</div>
+            <h3>✨ Key Takeaways</h3><div>${note.takeaways || '<em>—</em>'}</div>
+            <h3>🛠️ Application</h3><div>${note.application || '<em>—</em>'}</div>
+            <h3>🙏 Prayer Points</h3><div>${note.prayer || '<em>—</em>'}</div>
+            <p style="margin-top:30px; font-size:10px; color:gray;">Generated by Shepherd's Quill</p>
+        `;
+        const opt = { margin: [0.5,0.5,0.5,0.5], filename: `${note.title.replace(/[^a-z0-9]/gi,'_')}_sermon.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: false }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
+        return html2pdf().set(opt).from(pdfContainer).save();
+    }
+
+    async function exportCurrentPDF() {
+        if(!currentNoteId) { alert("No note selected."); return; }
+        const note = notes.find(n=>n.id===currentNoteId);
+        if(note) await generateNotePDF(note);
+    }
+
+    async function exportAllToPDF() {
+        if(notes.length===0) { alert("No notes to export."); return; }
+        for(let i=0; i<notes.length; i++) {
+            await generateNotePDF(notes[i]);
+            await new Promise(r=>setTimeout(r, 400));
+        }
+        alert("All notes exported as separate PDF files");
+    }
+
+    // Import/Export JSON
+    function exportBackup() {
+        const dataStr = JSON.stringify(notes, null, 2);
+        const blob = new Blob([dataStr], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `shepherd_notes_backup_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+    function importBackup() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json';
+        input.onchange = e=>{
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = ev=>{
+                try {
+                    const imported = JSON.parse(ev.target.result);
+                    if(Array.isArray(imported)) {
+                        notes = imported;
+                        if(notes.length) nextId = Math.max(...notes.map(n=>n.id),0)+1;
+                        else nextId=1;
+                        saveToLocal();
+                        if(notes.length) loadNoteIntoEditor(notes[0].id);
+                        else clearEditorForm();
+                        alert("Import successful!");
+                    } else throw new Error();
+                } catch(e) { alert("Invalid JSON file"); }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+
+    // rich editor helpers
+    function setupRichEditors() {
+        const commands = (editorId, cmd) => {
+            const editor = document.getElementById(editorId);
+            if(!editor) return;
+            if(cmd === 'bold') document.execCommand('bold', false, null);
+            else if(cmd === 'italic') document.execCommand('italic', false, null);
+            else if(cmd === 'insertUnordered') document.execCommand('insertUnorderedList', false, null);
+            else if(cmd === 'insertOrdered') document.execCommand('insertOrderedList', false, null);
+            else if(cmd === 'highlight') {
+                document.execCommand('hiliteColor', false, '#fff59d');
+            }
+            editor.focus();
+        };
+        document.querySelectorAll('.rich-toolbar').forEach(tb=>{
+            const targetId = tb.getAttribute('data-target');
+            tb.querySelectorAll('span').forEach(btn=>{
+                btn.addEventListener('click',(e)=>{
+                    e.preventDefault();
+                    const cmd = btn.getAttribute('data-cmd');
+                    commands(targetId, cmd);
+                });
+            });
+        });
+    }
+
+    // event listeners & init
+    document.addEventListener('DOMContentLoaded',()=>{
+        loadData();
+        setupRichEditors();
+        document.getElementById("saveNoteBtn").addEventListener("click", saveCurrentNote);
+        document.getElementById("newNoteBtn").addEventListener("click", newNote);
+        document.getElementById("deleteNoteBtn").addEventListener("click", deleteCurrent);
+        document.getElementById("duplicateNoteBtn").addEventListener("click", duplicateNote);
+        document.getElementById("exportCurrPdfBtn").addEventListener("click", exportCurrentPDF);
+        document.getElementById("exportAllPdfBtn").addEventListener("click", exportAllToPDF);
+        document.getElementById("exportDataBtn").addEventListener("click", exportBackup);
+        document.getElementById("importDataBtn").addEventListener("click", importBackup);
+        document.getElementById("searchInput").addEventListener("input", ()=> renderNoteList());
+        document.getElementById("tagFilterInput").addEventListener("input", ()=> renderNoteList());
+        // initial date
+        if(!document.getElementById("noteDate").value) document.getElementById("noteDate").value = new Date().toISOString().slice(0,10);
+    });
+</script>
+</body>
+</html>
